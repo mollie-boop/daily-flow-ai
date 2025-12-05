@@ -2,9 +2,13 @@ import { useState } from 'react';
 import { Navigation } from '@/components/Navigation';
 import { DailyLogInput } from '@/components/DailyLogInput';
 import { ProcessedResults } from '@/components/ProcessedResults';
+import { ThemeToggle } from '@/components/ThemeToggle';
 import { Task, ProcessedLog, DailyLog } from '@/types';
-import { mockProcessLog, saveLog, saveTasks } from '@/lib/store';
+import { saveLog, saveTasks, estimateLogHours, extractClientsFromText } from '@/lib/store';
+import { processLogWithAI, isAIEnabled } from '@/lib/ai';
 import { toast } from 'sonner';
+import { Badge } from '@/components/ui/badge';
+import { Sparkles, AlertCircle } from 'lucide-react';
 
 const Index = () => {
   const [isProcessing, setIsProcessing] = useState(false);
@@ -12,14 +16,15 @@ const Index = () => {
 
   const handleProcess = async (content: string, tasks: Task[]) => {
     setIsProcessing(true);
-    
-    // Simulate AI processing delay
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
+
     try {
-      const result = mockProcessLog(content, tasks);
-      
-      // Save the log
+      // Process log with AI (or fallback to mock if no API key)
+      const result = await processLogWithAI(content, tasks);
+
+      // Estimate hours for this log
+      const estimatedHours = estimateLogHours(content, result.extractedTasks);
+
+      // Save the log with time estimation
       const newLog: DailyLog = {
         id: crypto.randomUUID(),
         date: new Date(),
@@ -27,18 +32,21 @@ const Index = () => {
         tasks: result.extractedTasks,
         processed: true,
         createdAt: new Date(),
+        estimatedHours,
       };
       saveLog(newLog);
-      
+
       // Save tasks
       saveTasks(result.extractedTasks);
-      
+
       setProcessedResult(result);
-      
+
+      const aiStatus = isAIEnabled() ? 'AI-powered' : 'Basic';
       toast.success('Your day has been processed!', {
-        description: `Found ${result.recognizedClients.length} clients and ${result.extractedTasks.length} tasks.`,
+        description: `${aiStatus} processing: ${result.recognizedClients.length} clients, ${result.extractedTasks.length} tasks. Estimated: ${estimatedHours}h`,
       });
     } catch (error) {
+      console.error('Processing error:', error);
       toast.error('Failed to process your day', {
         description: 'Please try again.',
       });
@@ -53,13 +61,31 @@ const Index = () => {
     day: 'numeric' 
   });
 
+  const aiEnabled = isAIEnabled();
+
   return (
     <div className="min-h-screen bg-background">
       <div className="max-w-2xl mx-auto px-4 py-8">
         {/* Header */}
-        <header className="mb-8 text-center">
+        <header className="mb-8 text-center relative">
+          <div className="absolute right-0 top-0">
+            <ThemeToggle />
+          </div>
           <h1 className="text-3xl font-bold text-foreground mb-2">DayLog</h1>
           <p className="text-muted-foreground">{today}</p>
+          <div className="flex items-center justify-center gap-2 mt-2">
+            {aiEnabled ? (
+              <Badge variant="default" className="gap-1">
+                <Sparkles className="w-3 h-3" />
+                AI Enabled
+              </Badge>
+            ) : (
+              <Badge variant="secondary" className="gap-1">
+                <AlertCircle className="w-3 h-3" />
+                AI Not Configured
+              </Badge>
+            )}
+          </div>
         </header>
 
         {/* Navigation */}

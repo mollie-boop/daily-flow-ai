@@ -3,8 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { Navigation } from '@/components/Navigation';
 import { ClientCard } from '@/components/ClientCard';
 import { Client } from '@/types';
-import { getClients } from '@/lib/store';
+import { getClients, deleteClient } from '@/lib/store';
 import { Users } from 'lucide-react';
+import { toast } from 'sonner';
 
 const Clients = () => {
   const [clients, setClients] = useState<Client[]>([]);
@@ -13,6 +14,12 @@ const Clients = () => {
   useEffect(() => {
     setClients(getClients());
   }, []);
+
+  const handleDeleteClient = (clientId: string) => {
+    deleteClient(clientId);
+    setClients(getClients());
+    toast.success('Client deleted successfully');
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -43,10 +50,11 @@ const Clients = () => {
           ) : (
             <div className="grid gap-4 animate-fade-in">
               {clients.map((client) => (
-                <ClientCard 
-                  key={client.id} 
+                <ClientCard
+                  key={client.id}
                   client={client}
                   onClick={() => navigate(`/clients/${client.id}`)}
+                  onDelete={handleDeleteClient}
                 />
               ))}
             </div>

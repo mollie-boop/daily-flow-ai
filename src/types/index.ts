@@ -4,6 +4,10 @@ export interface Task {
   completed: boolean;
   clientId?: string;
   createdAt: Date;
+  priority?: 'low' | 'medium' | 'high';
+  status?: 'todo' | 'in_progress' | 'completed' | 'blocked';
+  dueDate?: Date;
+  billable?: boolean;
 }
 
 export interface DailyLog {
@@ -13,6 +17,8 @@ export interface DailyLog {
   tasks: Task[];
   processed: boolean;
   createdAt: Date;
+  estimatedHours?: number;
+  actualHours?: number;
 }
 
 export interface Client {

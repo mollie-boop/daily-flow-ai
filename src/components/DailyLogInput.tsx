@@ -1,18 +1,41 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Sparkles, Plus, Check, X } from 'lucide-react';
+import { Sparkles, Plus, Check, X, Save } from 'lucide-react';
 import { Task } from '@/types';
+import { toast } from 'sonner';
 
 interface DailyLogInputProps {
   onProcess: (content: string, tasks: Task[]) => void;
   isProcessing: boolean;
 }
 
+const DRAFT_KEY = 'daylog_draft';
+const DRAFT_TASKS_KEY = 'daylog_draft_tasks';
+
 export function DailyLogInput({ onProcess, isProcessing }: DailyLogInputProps) {
-  const [content, setContent] = useState('');
-  const [tasks, setTasks] = useState<Task[]>([]);
+  // Load draft from localStorage on mount
+  const [content, setContent] = useState(() => {
+    const saved = localStorage.getItem(DRAFT_KEY);
+    return saved || '';
+  });
+  const [tasks, setTasks] = useState<Task[]>(() => {
+    const saved = localStorage.getItem(DRAFT_TASKS_KEY);
+    return saved ? JSON.parse(saved) : [];
+  });
   const [newTaskText, setNewTaskText] = useState('');
+  const [lastSaved, setLastSaved] = useState<Date | null>(null);
+
+  // Auto-save draft to localStorage
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      localStorage.setItem(DRAFT_KEY, content);
+      localStorage.setItem(DRAFT_TASKS_KEY, JSON.stringify(tasks));
+      setLastSaved(new Date());
+    }, 1000); // Auto-save after 1 second of inactivity
+
+    return () => clearTimeout(timer);
+  }, [content, tasks]);
 
   const addTask = () => {
     if (!newTaskText.trim()) return;
@@ -41,6 +64,19 @@ export function DailyLogInput({ onProcess, isProcessing }: DailyLogInputProps) {
   const handleProcess = () => {
     if (!content.trim() && tasks.length === 0) return;
     onProcess(content, tasks);
+    // Clear draft after processing
+    localStorage.removeItem(DRAFT_KEY);
+    localStorage.removeItem(DRAFT_TASKS_KEY);
+    setContent('');
+    setTasks([]);
+  };
+
+  const clearDraft = () => {
+    localStorage.removeItem(DRAFT_KEY);
+    localStorage.removeItem(DRAFT_TASKS_KEY);
+    setContent('');
+    setTasks([]);
+    toast.success('Draft cleared');
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -50,15 +86,43 @@ export function DailyLogInput({ onProcess, isProcessing }: DailyLogInputProps) {
     }
   };
 
+  // Keyboard shortcut: Cmd/Ctrl + Enter to process
+  useEffect(() => {
+    const handleKeyPress = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+        e.preventDefault();
+        if (!isProcessing && (content.trim() || tasks.length > 0)) {
+          handleProcess();
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, [content, tasks, isProcessing]);
+
   return (
     <div className="space-y-6 animate-fade-in">
+      {/* Auto-save indicator */}
+      {(content || tasks.length > 0) && (
+        <div className="flex items-center justify-between text-xs text-muted-foreground">
+          <div className="flex items-center gap-2">
+            <Save className="w-3 h-3" />
+            <span>Draft auto-saved</span>
+          </div>
+          <Button variant="ghost" size="sm" onClick={clearDraft} className="h-auto py-1 px-2">
+            Clear draft
+          </Button>
+        </div>
+      )}
+
       {/* Main text area */}
       <Card className="overflow-hidden">
         <div className="p-1">
           <textarea
             value={content}
             onChange={(e) => setContent(e.target.value)}
-            placeholder="Write your day just as it is — messy, busy, brilliant. Use @client to tag clients..."
+            placeholder="Write your day just as it is — messy, busy, brilliant. Use @client to tag clients...&#10;&#10;💡 Tip: Press Cmd/Ctrl + Enter to process"
             className="w-full min-h-[200px] p-5 bg-transparent border-0 resize-none focus:outline-none text-foreground placeholder:text-muted-foreground/60 text-base leading-relaxed"
           />
         </div>
