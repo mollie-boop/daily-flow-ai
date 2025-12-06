@@ -25,24 +25,34 @@ export async function processLogWithAI(content: string, existingTasks: Task[]): 
     const prompt = `You are an AI assistant helping a freelancer organize their daily work log.
 
 Analyze the following daily log and extract:
-1. Client names mentioned (even if not explicitly tagged with @)
-2. Tasks completed or to be done
-3. A brief summary of the work
+1. **Client/Company names** - Look for proper nouns that represent clients, companies, teams, or projects (e.g., "Acme", "TechCorp", "BlueSky Digital", "Google", etc.). Extract ALL company/client names mentioned, even if not tagged with @.
+2. **Tasks** - Extract all action items, todos, and completed work as separate task items
+3. **Summary** - Brief overview of the day's work
 
 Daily Log:
 """
 ${content}
 """
 
+IMPORTANT: Always include ALL client/company names found in the text in the "clients" array. Look for capitalized proper nouns that represent businesses or organizations.
+
 Respond in JSON format:
 {
-  "clients": ["client1", "client2"],
+  "clients": ["client1", "client2", "client3"],
   "tasks": ["task1", "task2"],
   "summary": "Brief summary of the day's work",
   "clientNotes": {
     "client1": ["note about client1 work"],
     "client2": ["note about client2 work"]
   }
+}
+
+Example:
+Input: "Had a call with Acme Corp about their website. Working on TechCorp mobile app."
+Output: {
+  "clients": ["Acme Corp", "TechCorp"],
+  "tasks": ["Call with Acme Corp about website", "Work on TechCorp mobile app"],
+  "summary": "Client calls and mobile development work"
 }`;
 
     const response = await openai.chat.completions.create({
