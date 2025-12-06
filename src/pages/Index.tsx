@@ -42,8 +42,12 @@ const Index = () => {
       setProcessedResult(result);
 
       const aiStatus = isAIEnabled() ? 'AI-powered' : 'Basic';
+      const clientHint = result.recognizedClients.length === 0 && result.extractedTasks.length > 0
+        ? ' Tip: Use @ClientName to tag clients!'
+        : '';
+
       toast.success('Your day has been processed!', {
-        description: `${aiStatus} processing: ${result.recognizedClients.length} clients, ${result.extractedTasks.length} tasks. Estimated: ${estimatedHours}h`,
+        description: `${aiStatus} processing: ${result.recognizedClients.length} clients, ${result.extractedTasks.length} tasks. Estimated: ${estimatedHours}h${clientHint}`,
       });
     } catch (error) {
       console.error('Processing error:', error);

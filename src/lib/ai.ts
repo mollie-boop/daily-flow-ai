@@ -73,6 +73,10 @@ Output: {
 
     const result = JSON.parse(response.choices[0].message.content || '{}');
 
+    // Debug: Log what AI returned
+    console.log('AI Response:', result);
+    console.log('Clients found by AI:', result.clients);
+
     // Create or get clients
     const clients = result.clients?.map((name: string) => getOrCreateClient(name)) || [];
 
@@ -102,8 +106,15 @@ Output: {
       clientNotes,
       recognizedClients: clients.map(c => c.name),
     };
-  } catch (error) {
+  } catch (error: any) {
     console.error('OpenAI API error:', error);
+
+    // Check if it's a quota/billing error
+    if (error?.status === 429 || error?.message?.includes('quota')) {
+      console.warn('⚠️ OpenAI quota exceeded. Add credits at: https://platform.openai.com/settings/organization/billing');
+      console.warn('💡 Tip: Use @mentions to tag clients (e.g., @ClientName) - works without AI!');
+    }
+
     // Fall back to mock processing on error
     return mockProcessLog(content, existingTasks);
   }
