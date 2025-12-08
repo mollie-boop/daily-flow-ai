@@ -19,7 +19,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { getLogs, getClients, deleteLog, saveLog, estimateLogHours } from '@/lib/store';
+import { getLogs, getClients, deleteLog, saveLog, estimateLogHours, extractClientsFromText, getOrCreateClient } from '@/lib/store';
 import { DailyLog, Task } from '@/types';
 import { format, isSameDay, startOfMonth, endOfMonth } from 'date-fns';
 import { Trash2, Edit2, Plus, Save, X } from 'lucide-react';
@@ -92,6 +92,12 @@ const CalendarView = () => {
       return;
     }
 
+    // Extract and create clients from @mentions
+    const clientMentions = extractClientsFromText(editContent);
+    clientMentions.forEach(clientName => {
+      getOrCreateClient(clientName);
+    });
+
     const estimatedHours = estimateLogHours(editContent, editTasks);
     const existingLog = editingLogId ? selectedLogs.find(l => l.id === editingLogId) : null;
 
@@ -109,7 +115,12 @@ const CalendarView = () => {
     refreshLogs();
     setIsEditing(false);
     setEditingLogId(null);
-    toast.success(editingLogId ? 'Log updated successfully' : 'Log created successfully');
+
+    const clientCount = clientMentions.length;
+    const successMessage = editingLogId ? 'Log updated successfully' : 'Log created successfully';
+    const clientInfo = clientCount > 0 ? ` Found ${clientCount} client${clientCount !== 1 ? 's' : ''}!` : '';
+
+    toast.success(successMessage + clientInfo);
   };
 
   // Add task
